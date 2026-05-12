@@ -9,43 +9,43 @@ function clamp(n: number): number {
 export function scoreProductRubric(p: DiscoveredProduct): ScoreBreakdown {
   const desc = p.descriptionText.length;
   const semanticClarity = clamp(
-    (desc > 400 ? 40 : desc / 10) +
-      (p.title.length > 8 ? 20 : 10) +
-      (p.evidence.specs.length > 2 ? 25 : 10) +
-      (p.evidence.faqCount > 0 || p.evidence.hasFaqSchema ? 15 : 0),
+    (desc > 400 ? 32 : desc / 12) +
+      (p.title.length > 8 ? 16 : 8) +
+      (p.evidence.specs.length > 2 ? 20 : 8) +
+      (p.evidence.faqCount > 0 || p.evidence.hasFaqSchema ? 12 : 0),
   );
 
   let meta = 0;
-  if (p.evidence.metaDescription && p.evidence.metaDescription.length > 40) meta += 35;
-  if (p.evidence.ogDescription && p.evidence.ogDescription.length > 30) meta += 25;
-  if (p.evidence.ogTitle) meta += 15;
-  if (p.images.length > 0) meta += 15;
-  const metadataCompleteness = clamp(meta + p.evidence.imageAltCoverage * 10);
+  if (p.evidence.metaDescription && p.evidence.metaDescription.length > 40) meta += 30;
+  if (p.evidence.ogDescription && p.evidence.ogDescription.length > 30) meta += 22;
+  if (p.evidence.ogTitle) meta += 12;
+  if (p.images.length > 0) meta += 12;
+  const metadataCompleteness = clamp(meta + p.evidence.imageAltCoverage * 8);
 
   let structured = 0;
-  if (p.evidence.hasProductSchema) structured += 40;
-  if (p.evidence.hasOffer) structured += 25;
-  if (p.evidence.hasAggregateRating) structured += 20;
-  if (p.evidence.hasFaqSchema) structured += 15;
+  if (p.evidence.hasProductSchema) structured += 34;
+  if (p.evidence.hasOffer) structured += 22;
+  if (p.evidence.hasAggregateRating) structured += 18;
+  if (p.evidence.hasFaqSchema) structured += 12;
   const structuredData = clamp(structured);
 
   const retrievalFriendliness = clamp(
-    semanticClarity * 0.35 +
-      structuredData * 0.25 +
-      (p.evidence.specs.length > 0 ? 20 : 0) +
-      (p.evidence.jsonLdTypes.length > 0 ? 20 : 0),
+    semanticClarity * 0.33 +
+      structuredData * 0.24 +
+      (p.evidence.specs.length > 0 ? 16 : 0) +
+      (p.evidence.jsonLdTypes.length > 0 ? 16 : 0),
   );
 
   const comparisonReadiness = clamp(
-    (p.evidence.specs.length > 4 ? 45 : p.evidence.specs.length * 8) +
-      (p.priceMin != null ? 25 : 0) +
-      (p.descriptionText.length > 300 ? 30 : 15),
+    (p.evidence.specs.length > 4 ? 38 : p.evidence.specs.length * 7) +
+      (p.priceMin != null ? 22 : 0) +
+      (p.descriptionText.length > 300 ? 26 : 12),
   );
 
-  let trust = 30;
-  if (p.evidence.hasAggregateRating) trust += 35;
-  if (p.evidence.reviewSignal === "widget_heuristic") trust += 25;
-  if (p.evidence.reviewSignal === "none") trust -= 10;
+  let trust = 22;
+  if (p.evidence.hasAggregateRating) trust += 32;
+  if (p.evidence.reviewSignal === "widget_heuristic") trust += 22;
+  if (p.evidence.reviewSignal === "none") trust -= 12;
   const trustSignals = clamp(trust);
 
   return {
@@ -55,7 +55,7 @@ export function scoreProductRubric(p: DiscoveredProduct): ScoreBreakdown {
     retrievalFriendliness,
     comparisonReadiness,
     trustSignals,
-    contentUniqueness: 70,
+    contentUniqueness: 52,
   };
 }
 
@@ -81,4 +81,4 @@ export function averageBreakdown(bs: ScoreBreakdown[]): ScoreBreakdown {
 }
 
 export const WEIGHTS_NOTE =
-  "Your overall score mixes two things: how complete and trustworthy your listings look (titles, details, reviews, images), and how well your wording lines up with everyday shopping questions. Listing quality counts a bit more than the shopping-question match.";
+  "Your overall score mixes listing completeness (titles, details, reviews, images) with how well your wording lines up with sample shopping questions. Similarity scores use a calibrated scale so strong embedding matches do not automatically read as “near perfect.” Listing quality counts a bit more than the question match.";

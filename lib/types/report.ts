@@ -82,10 +82,53 @@ export const realWorldWebResearchSynopsisSchema = z.object({
 
 export type RealWorldWebResearchSynopsis = z.infer<typeof realWorldWebResearchSynopsisSchema>;
 
+export const webSearchDiscoveryRankRowSchema = z.object({
+  prompt: z.string(),
+  summary: z.string(),
+  primaryMentioned: z.boolean(),
+  primaryApproxRank: z.number().nullable(),
+  surfacedExamples: z.array(
+    z.object({
+      label: z.string(),
+      url: z.string().nullable().optional(),
+      note: z.string().optional(),
+    }),
+  ),
+  caveats: z.string(),
+  sourceUrls: z.array(z.string()),
+});
+
+export type WebSearchDiscoveryRankRow = z.infer<typeof webSearchDiscoveryRankRowSchema>;
+
+export const webSearchDiscoveryRankBundleSchema = z.object({
+  disclaimer: z.string(),
+  note: z.string(),
+  results: z.array(webSearchDiscoveryRankRowSchema),
+});
+
+export type WebSearchDiscoveryRank = z.infer<typeof webSearchDiscoveryRankBundleSchema>;
+
+/** One unified narrative for the whole report (agentShop voice); tab fields map to the four main questions. */
+export const centralInsightsSchema = z.object({
+  executiveSummary: z.string().min(60),
+  /** Tab 1 — Are these products likely to be recommended by AI assistants? */
+  aiAssistantRecommendation: z.string().min(200),
+  /** Tab 2 — Which competitors or alternatives may win instead? */
+  competitorWinners: z.string().min(200),
+  /** Tab 3 — What catalog/listing gaps make the brand less AI-ready? */
+  aiReadinessGaps: z.string().min(200),
+  /** Tab 4 — What agentShop recommends to improve AI visibility */
+  agentShopActions: z.string().min(200),
+});
+
+export type CentralInsights = z.infer<typeof centralInsightsSchema>;
+
 export const auditReportV1Schema = z.object({
   version: z.literal(1),
   generatedAt: z.string(),
   storeUrl: z.string(),
+  /** Hostname-style label for the audited store (charts, live sim, copy). */
+  primaryStoreLabel: z.string().optional(),
   categoryHint: z.string().nullable(),
   regionHint: z.string().nullable(),
   luxuryHint: z.boolean(),
@@ -106,7 +149,7 @@ export const auditReportV1Schema = z.object({
   }),
   products: z.array(productVisibilitySchema),
   simulation: z.array(simulationPromptResultSchema),
-  /** OpenAI-picked results from crawled candidates (not live web). */
+  /** Top picks per discovery prompt; uses live web search (not crawl-only reordering). */
   liveSimulation: z
     .object({
       note: z.string(),
@@ -133,6 +176,8 @@ export const auditReportV1Schema = z.object({
     })
     .nullable()
     .optional(),
+  /** Same regional discovery prompts as liveSimulation, ranked via OpenAI web_search (public web, not crawl-only). */
+  webSearchDiscoveryRank: webSearchDiscoveryRankBundleSchema.nullable().optional(),
   /** Model-suggested well-known brands per discovery prompt (not from crawl). */
   marketBrandSignals: z
     .array(
@@ -170,6 +215,8 @@ export const auditReportV1Schema = z.object({
   realWorldPromptResearch: realWorldPromptResearchSchema.optional(),
   /** Optional: short panel blurbs derived from live web research when present. */
   realWorldWebResearchSynopsis: realWorldWebResearchSynopsisSchema.optional(),
+  /** Unified long-form insights (one narrative voice); preferred over synopsis for tab intros. */
+  centralInsights: centralInsightsSchema.optional().nullable(),
 });
 
 export type AuditReportV1 = z.infer<typeof auditReportV1Schema>;

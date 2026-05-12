@@ -26,7 +26,7 @@ function normalizeFive(list: string[]): string[] {
   return out;
 }
 
-function collectSourceUrls(resp: Response): string[] {
+export function collectSourceUrls(resp: Response): string[] {
   const urls: string[] = [];
   for (const item of resp.output ?? []) {
     if (item.type !== "web_search_call") continue;
@@ -159,62 +159,36 @@ export async function runRealWorldPromptResearch(opts: {
   const { brandIntentPrompts, shoppingIntentPrompts } =
     await generateShopperResearchPrompts(opts);
 
-  const brandIntentResults: PromptWebResearchItem[] = [];
-  let i = 0;
-  for (const prompt of brandIntentPrompts) {
-    const pct = 92 + Math.round((i / 10) * 6);
-    onProgress(
-      "web_research",
-      pct,
-      `Web research (${i + 1}/10): ${prompt.slice(0, 56)}${prompt.length > 56 ? "…" : ""}`,
-    );
+  const failMessage =
+    "We couldn’t complete live web research for this prompt (API or tool error). Retry the audit or check model access for web search.";
+
+  async function researchOneSafe(
+    prompt: string,
+    intent: "brand" | "shopping",
+  ): Promise<PromptWebResearchItem> {
     try {
       const { analysis, sources } = await researchOnePrompt({
         prompt,
-        intent: "brand",
+        intent,
         category: opts.category,
         region,
       });
-      brandIntentResults.push({ prompt, intent: "brand", analysis, sources });
+      return { prompt, intent, analysis, sources };
     } catch {
-      brandIntentResults.push({
-        prompt,
-        intent: "brand",
-        analysis:
-          "We couldn’t complete live web research for this prompt (API or tool error). Retry the audit or check model access for web search.",
-        sources: [],
-      });
+      return { prompt, intent, analysis: failMessage, sources: [] };
     }
-    i++;
   }
 
-  const shoppingIntentResults: PromptWebResearchItem[] = [];
-  for (const prompt of shoppingIntentPrompts) {
-    const pct = 92 + Math.round((i / 10) * 6);
-    onProgress(
-      "web_research",
-      pct,
-      `Web research (${i + 1}/10): ${prompt.slice(0, 56)}${prompt.length > 56 ? "…" : ""}`,
-    );
-    try {
-      const { analysis, sources } = await researchOnePrompt({
-        prompt,
-        intent: "shopping",
-        category: opts.category,
-        region,
-      });
-      shoppingIntentResults.push({ prompt, intent: "shopping", analysis, sources });
-    } catch {
-      shoppingIntentResults.push({
-        prompt,
-        intent: "shopping",
-        analysis:
-          "We couldn’t complete live web research for this prompt (API or tool error). Retry the audit or check model access for web search.",
-        sources: [],
-      });
-    }
-    i++;
-  }
+  onProgress(
+    "web_research",
+    93,
+    `Running ${brandIntentPrompts.length + shoppingIntentPrompts.length} live web searches in parallel…`,
+  );
+
+  const [brandIntentResults, shoppingIntentResults] = await Promise.all([
+    Promise.all(brandIntentPrompts.map((prompt) => researchOneSafe(prompt, "brand"))),
+    Promise.all(shoppingIntentPrompts.map((prompt) => researchOneSafe(prompt, "shopping"))),
+  ]);
 
   return {
     disclaimer:

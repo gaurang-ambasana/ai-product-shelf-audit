@@ -101,9 +101,9 @@ User hints: category=${category ?? "unspecified"}, region=${region ?? "unspecifi
 Return a JSON object with:
 - perProductGaps: string[][] — same length as selected products, each 3-6 short gaps grounded in evidence; write for a store owner, no jargon (no "JSON-LD", "embeddings", "schema")
 - perProductWins: string[][] — same length, 2-4 quick wins each; plain language
-- competitorSummary: string or null — 2-4 sentences describing what kinds of brands or makers shoppers in the given REGION might commonly hear about for this CATEGORY when asking an AI assistant (general market picture). Do not reference pasted competitor URLs (there are none). Null only if you truly have no safe answer.
-- catalogGaps: 4-8 bullets for the whole catalog crawl; merchant-friendly
-- recommendations: 6-10 prioritized actions to improve listings and trust; avoid saying "SEO" unless clearly about search snippets—prefer "product page", "listing", "shoppers"
+- competitorSummary: string or null — 4-8 sentences: which kinds of competitors, marketplaces, or brands are likely to win the shopper for this category in the given REGION when someone asks an AI assistant or searches—grounded in evidence only. Do not reference pasted competitor URLs (there are none). Null only if you truly have no safe answer.
+- catalogGaps: 5-10 bullets for the whole catalog crawl; focus on what is missing for AI assistants and smart shopping surfaces to trust and quote the catalog
+- recommendations: 8-12 prioritized actions to improve AI visibility and listing clarity; write as agentShop advising the merchant; avoid saying "SEO" unless clearly about search snippets—prefer "product page", "listing", "shoppers"
 - rewrites: array parallel to selected products (same order), each with productId matching, suggestedTitle, bullets (4-6), description (2-4 sentences), faqIdeas (3-5), schemaTips (2-4) — schemaTips should say "structured product data" or "product details for Google/shopping" not raw technical names
 - technicalJsonLdSummary, technicalMetaSummary, technicalMediaSummary: short paragraphs from evidence only, readable for a non-developer
 - measurementAppendix: 4-8 bullets explaining what was looked at in simple terms (no fake precision)

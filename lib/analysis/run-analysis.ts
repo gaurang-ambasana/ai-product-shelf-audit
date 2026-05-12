@@ -2,12 +2,13 @@ import type { CrawlResult } from "@/lib/types/crawl";
 import type { AuditReportV1 } from "@/lib/types/report";
 import { buildBrandCorpusChunks, type TextChunk } from "./chunking";
 import { cosineSimilarity, embedTexts, simToScore } from "./embeddings";
-import { runLiveAiSimulation } from "./live-sim";
+import { runLiveStyleWebSearch } from "./live-sim-web-search";
 import { generateLlmSections } from "./llm-report";
 import { generateRegionalDiscoveryPrompts } from "./curated-prompts";
 import { fetchMarketBrandSignalsForPrompts } from "./market-brands";
 import { runRealWorldPromptResearch } from "./real-world-prompt-research";
-import { summarizeWebResearchForPanels } from "./summarize-web-research-panels";
+import { runWebSearchDiscoveryRank } from "./web-search-discovery-rank";
+import { generateCentralInsights } from "./central-report-insights";
 import {
   averageBreakdown,
   scoreProductRubric,
@@ -94,6 +95,8 @@ export async function runFullAnalysis(opts: {
   if (!selected.length) {
     throw new Error("No matching selected products");
   }
+
+  const primaryStoreLabel = storeHostnameFromCrawl(crawl.primary.inputUrl);
 
   opts.onProgress("chunk", 5, "Pulling together your product descriptions and details…");
   const allChunks: TextChunk[] = buildBrandCorpusChunks(selected);
@@ -191,7 +194,7 @@ export async function runFullAnalysis(opts: {
       perPrompt.reduce((s, x) => s + x.similarity, 0) / perPrompt.length;
     const rubricAvg =
       Object.values(breakdown).reduce((a, b) => a + b, 0) / 7;
-    const overall = Math.round(rubricAvg * 0.55 + retrievalAvg * 0.45);
+    const overall = Math.round(rubricAvg * 0.58 + retrievalAvg * 0.42);
 
     const leadImg = p.images[0];
     productVis.push({
@@ -207,7 +210,11 @@ export async function runFullAnalysis(opts: {
     });
   }
 
-  opts.onProgress("brand_rank", 65, "Seeing how your store fits common shopper questions…");
+  opts.onProgress(
+    "brand_rank",
+    65,
+    `Seeing how ${primaryStoreLabel} lines up with common shopper questions…`,
+  );
   const brandQueryRanks = regionalPrompts.map((q, qi) => {
     const qe = promptEmb[qi];
     let brandBest = 0;
@@ -215,7 +222,7 @@ export async function runFullAnalysis(opts: {
       brandBest = Math.max(brandBest, cosineSimilarity(qe, e));
     }
     const scores: { label: string; score: number; isYou: boolean }[] = [
-      { label: "Your store", score: brandBest, isYou: true },
+      { label: primaryStoreLabel, score: brandBest, isYou: true },
     ];
     for (let ci = 0; ci < segs.length; ci++) {
       const seg = segs[ci];
@@ -285,7 +292,7 @@ export async function runFullAnalysis(opts: {
       sum += simToScore(sim);
     }
     rankings.push({
-      label: "Your picks",
+      label: `${primaryStoreLabel} (selected)`,
       score: Math.round(sum / selected.length),
       isPrimaryBrand: true,
     });
@@ -332,6 +339,7 @@ export async function runFullAnalysis(opts: {
     version: 1,
     generatedAt: new Date().toISOString(),
     storeUrl: crawl.primary.inputUrl,
+    primaryStoreLabel,
     categoryHint: category ?? null,
     regionHint: regionTrim,
     luxuryHint: !!luxury,
@@ -382,14 +390,19 @@ export async function runFullAnalysis(opts: {
     /* optional */
   }
 
-  // Live-style ranking among your crawled products for each discovery prompt.
+  // Live web "top picks" per regional question (web_search — not crawl-only reordering).
   try {
     if (regionalPrompts.length >= 3) {
-      opts.onProgress("llm", 90, "Running live-style AI pick among your products…");
-      const live = await runLiveAiSimulation({
-        crawl,
-        selected,
+      opts.onProgress(
+        "llm",
+        90,
+        `Live web picks for regional questions (${primaryStoreLabel})…`,
+      );
+      const live = await runLiveStyleWebSearch({
         prompts: regionalPrompts,
+        primaryStoreLabel,
+        region: regionTrim,
+        category,
       });
       report.liveSimulation = live;
     }
@@ -399,7 +412,7 @@ export async function runFullAnalysis(opts: {
 
   try {
     opts.onProgress("web_research", 91, "Running live web research on generated shopper queries…");
-    report.realWorldPromptResearch = await runRealWorldPromptResearch({
+    const realWorld = await runRealWorldPromptResearch({
       crawl,
       selected,
       category,
@@ -407,16 +420,35 @@ export async function runFullAnalysis(opts: {
       luxury,
       onProgress: opts.onProgress,
     });
-    try {
-      opts.onProgress("web_synopsis", 98, "Summarizing live web findings for each report section…");
-      report.realWorldWebResearchSynopsis = await summarizeWebResearchForPanels(
-        report.realWorldPromptResearch,
-      );
-    } catch {
-      /* optional */
-    }
+    report.realWorldPromptResearch = realWorld;
   } catch {
     /* optional — long-running / model access */
+  }
+
+  try {
+    if (regionalPrompts.length >= 1) {
+      opts.onProgress(
+        "web_discovery_rank",
+        99,
+        `Open-web discovery check for ${primaryStoreLabel} (same regional prompts, live search)…`,
+      );
+      report.webSearchDiscoveryRank = await runWebSearchDiscoveryRank({
+        prompts: regionalPrompts,
+        primaryHostname: primaryStoreLabel,
+        primaryStoreLabel,
+        sampleProductTitles: selected.map((p) => p.title),
+        onProgress: opts.onProgress,
+      });
+    }
+  } catch {
+    report.webSearchDiscoveryRank = null;
+  }
+
+  try {
+    opts.onProgress("central_insights", 99, "Writing your unified agentShop insights…");
+    report.centralInsights = await generateCentralInsights(report);
+  } catch {
+    report.centralInsights = null;
   }
 
   opts.onProgress("done", 100, "Your report is ready.");

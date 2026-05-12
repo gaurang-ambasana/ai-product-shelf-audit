@@ -38,7 +38,14 @@ export function cosineSimilarity(a: number[], b: number[]): number {
   return d === 0 ? 0 : dot / d;
 }
 
-/** Map cosine [-1,1] to [0,100] for display */
+/** Map cosine [-1,1] to a conservative 0–100 display score.
+ * Text embeddings sit in a narrow high band; a linear map made most stores look “90+”.
+ * We compress the top end so similar-looking numbers better match merchant intuition. */
 export function simToScore(sim: number): number {
-  return Math.round(((sim + 1) / 2) * 100);
+  const c = Math.max(-1, Math.min(1, sim));
+  const t = (c + 1) / 2;
+  const gamma = 1.48;
+  const curved = Math.pow(t, gamma);
+  const scaled = 16 + curved * 80;
+  return Math.round(Math.max(10, Math.min(96, scaled)));
 }
