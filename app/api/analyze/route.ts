@@ -3,7 +3,7 @@ import { encodeNdjsonLine } from "@/lib/stream/ndjson";
 import { runFullAnalysis } from "@/lib/analysis/run-analysis";
 import { jsonError, logServerError } from "@/lib/errors";
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
   const route = "/api/analyze";
