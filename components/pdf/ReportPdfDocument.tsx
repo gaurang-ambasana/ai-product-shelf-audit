@@ -52,6 +52,28 @@ export function ReportPdfDocument({ report }: { report: AuditReportV1 }) {
             {i + 1}. {r}
           </Text>
         ))}
+        {report.realWorldPromptResearch ? (
+          <>
+            <Text style={styles.h2}>Live web research (excerpt)</Text>
+            <Text style={styles.small}>{report.realWorldPromptResearch.disclaimer}</Text>
+            {report.realWorldPromptResearch.brandIntentResults.slice(0, 2).map((row) => (
+              <View key={`b-${row.prompt}`} style={{ marginBottom: 8 }} wrap={false}>
+                <Text style={styles.p}>{row.prompt}</Text>
+                <Text style={styles.row}>
+                  {row.analysis.length > 700 ? `${row.analysis.slice(0, 700)}…` : row.analysis}
+                </Text>
+              </View>
+            ))}
+            {report.realWorldPromptResearch.shoppingIntentResults.slice(0, 2).map((row) => (
+              <View key={`s-${row.prompt}`} style={{ marginBottom: 8 }} wrap={false}>
+                <Text style={styles.p}>{row.prompt}</Text>
+                <Text style={styles.row}>
+                  {row.analysis.length > 700 ? `${row.analysis.slice(0, 700)}…` : row.analysis}
+                </Text>
+              </View>
+            ))}
+          </>
+        ) : null}
         <Text style={styles.small}>{report.weightsNote}</Text>
       </Page>
       <Page size="A4" style={styles.page}>

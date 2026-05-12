@@ -4,11 +4,13 @@ import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import Accordion from "@mui/material/Accordion";
 import AccordionDetails from "@mui/material/AccordionDetails";
 import AccordionSummary from "@mui/material/AccordionSummary";
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import Link from "@mui/material/Link";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
@@ -150,8 +152,9 @@ export function ReportView({ report }: { report: AuditReportV1 }) {
         </Typography>
         <Stack component="ul" spacing={1} sx={{ m: 0, pl: 2.5 }}>
           <Typography component="li" variant="body2" color="text.secondary">
-            <strong>Assistant fit</strong> — Are your products likely to be picked up and recommended by AI shopping
-            helpers, based on your public pages?
+            <strong>Assistant fit</strong> — How your public listings align with sample shopper questions, plus{" "}
+            <strong>live web research</strong> on AI-generated queries similar to what people type into search (not
+            tied to your store name).
           </Typography>
           <Typography component="li" variant="body2" color="text.secondary">
             <strong>Competition</strong> — Which other stores in this scan may rank ahead for the same kinds of
@@ -227,6 +230,85 @@ export function ReportView({ report }: { report: AuditReportV1 }) {
                   ))}
                 </Stack>
               </Box>
+
+              {report.realWorldPromptResearch ? (
+                <Box>
+                  <Typography variant="h6" sx={{ mb: 1 }}>
+                    Live web research (generated shopper queries)
+                  </Typography>
+                  <Alert severity="warning" sx={{ mb: 2 }}>
+                    This section runs OpenAI <strong>web search</strong> on ten short queries we generate from your
+                    product mix and region—point-in-time web results, not your crawl and not a ranking guarantee.
+                  </Alert>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2, display: "block" }}>
+                    {report.realWorldPromptResearch.disclaimer}
+                  </Typography>
+
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
+                    Brand & maker style queries
+                  </Typography>
+                  <Stack spacing={2} sx={{ mb: 3 }}>
+                    {report.realWorldPromptResearch.brandIntentResults.map((row) => (
+                      <Paper key={`brand-${row.prompt}`} variant="outlined" sx={{ p: 2, borderColor: "divider" }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                          {row.prompt}
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ whiteSpace: "pre-wrap", mb: row.sources.length ? 1.5 : 0 }}
+                        >
+                          {row.analysis}
+                        </Typography>
+                        {row.sources.length ? (
+                          <Stack spacing={0.5}>
+                            <Typography variant="caption" color="text.secondary">
+                              Sources surfaced by search
+                            </Typography>
+                            {row.sources.slice(0, 12).map((s) => (
+                              <Link key={s.url} href={s.url} target="_blank" rel="noopener noreferrer" variant="body2">
+                                {s.url}
+                              </Link>
+                            ))}
+                          </Stack>
+                        ) : null}
+                      </Paper>
+                    ))}
+                  </Stack>
+
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
+                    Where-to-buy style queries
+                  </Typography>
+                  <Stack spacing={2}>
+                    {report.realWorldPromptResearch.shoppingIntentResults.map((row) => (
+                      <Paper key={`shop-${row.prompt}`} variant="outlined" sx={{ p: 2, borderColor: "divider" }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                          {row.prompt}
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ whiteSpace: "pre-wrap", mb: row.sources.length ? 1.5 : 0 }}
+                        >
+                          {row.analysis}
+                        </Typography>
+                        {row.sources.length ? (
+                          <Stack spacing={0.5}>
+                            <Typography variant="caption" color="text.secondary">
+                              Sources surfaced by search
+                            </Typography>
+                            {row.sources.slice(0, 12).map((s) => (
+                              <Link key={s.url} href={s.url} target="_blank" rel="noopener noreferrer" variant="body2">
+                                {s.url}
+                              </Link>
+                            ))}
+                          </Stack>
+                        ) : null}
+                      </Paper>
+                    ))}
+                  </Stack>
+                </Box>
+              ) : null}
 
               <Divider />
 
