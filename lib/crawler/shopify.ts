@@ -46,12 +46,38 @@ export function pricesFromProduct(p: ShopifyJsonProduct): {
   const nums = (p.variants ?? [])
     .map((v) => parseFloat(v.price))
     .filter((n) => Number.isFinite(n));
-  if (!nums.length) return { min: null, max: null, currency: null };
+  let currency: string | null = null;
+  for (const v of p.variants ?? []) {
+    const c = v.currency?.trim();
+    if (c) {
+      currency = c.length === 3 ? c.toUpperCase() : c;
+      break;
+    }
+  }
+  if (!nums.length) return { min: null, max: null, currency };
   return {
     min: Math.min(...nums),
     max: Math.max(...nums),
-    currency: p.variants[0]?.currency ?? null,
+    currency,
   };
+}
+
+/** Storefront `cart.js` exposes the shop’s selling currency (ISO 4217 when standard). */
+export async function tryFetchShopifyCartCurrency(
+  origin: string,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  const url = `${origin.replace(/\/$/, "")}/cart.js`;
+  const { ok, text } = await fetchText(url, signal);
+  if (!ok) return null;
+  try {
+    const j = JSON.parse(text) as { currency?: string };
+    const c = j.currency?.trim();
+    if (!c) return null;
+    return /^[A-Za-z]{3}$/.test(c) ? c.toUpperCase() : c;
+  } catch {
+    return null;
+  }
 }
 
 export function stripHtml(html: string | null | undefined): string {

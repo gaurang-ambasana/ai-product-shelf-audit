@@ -11,6 +11,7 @@ import type {
   StoreCrawl,
 } from "@/lib/types/crawl";
 import { extractPageEvidence } from "./extractors/page-evidence";
+import { extractProductPricingFromHtml } from "./extract-product-pricing";
 import { fetchText } from "./fetch-html";
 import { normalizeStoreUrl } from "./normalize-url";
 import { fetchRenderedHtml } from "./playwright";
@@ -18,6 +19,7 @@ import {
   detectShopify,
   pricesFromProduct,
   stripHtml,
+  tryFetchShopifyCartCurrency,
   tryFetchShopifyProductsPage,
   type ShopifyJsonProduct,
 } from "./shopify";
@@ -118,11 +120,38 @@ async function enrichProduct(
   if (!html) return p;
 
   const evidence = extractPageEvidence(html);
-  return { ...p, evidence };
+  const pricing = extractProductPricingFromHtml(html);
+
+  let priceMin = p.priceMin;
+  let priceMax = p.priceMax;
+  let currency = p.currency;
+
+  if (currency == null && pricing.currency != null) {
+    currency = pricing.currency;
+  }
+  if (priceMin == null && pricing.priceMin != null) {
+    priceMin = pricing.priceMin;
+  }
+  if (priceMax == null && pricing.priceMax != null) {
+    priceMax = pricing.priceMax;
+  }
+  if (priceMin != null && priceMax == null && pricing.priceMax != null) {
+    priceMax = pricing.priceMax;
+  }
+  if (priceMax != null && priceMin == null && pricing.priceMin != null) {
+    priceMin = pricing.priceMin;
+  }
+
+  return { ...p, priceMin, priceMax, currency, evidence };
 }
 
-function fromShopifyJson(origin: string, sp: ShopifyJsonProduct): DiscoveredProduct {
+function fromShopifyJson(
+  origin: string,
+  sp: ShopifyJsonProduct,
+  shopPresentmentCurrency: string | null,
+): DiscoveredProduct {
   const { min, max, currency } = pricesFromProduct(sp);
+  const resolvedCurrency = currency ?? shopPresentmentCurrency;
   const bodyHtml = sp.body_html ?? "";
   const blankEvidence = extractPageEvidence(
     `<html><title>${sp.title}</title><body>${bodyHtml}</body></html>`,
@@ -137,7 +166,7 @@ function fromShopifyJson(origin: string, sp: ShopifyJsonProduct): DiscoveredProd
     descriptionText: stripHtml(bodyHtml).slice(0, 8000),
     priceMin: min,
     priceMax: max,
-    currency,
+    currency: resolvedCurrency,
     images: (sp.images ?? []).slice(0, 12).map((im) => ({
       url: im.src,
       alt: im.alt ?? null,
@@ -179,6 +208,16 @@ async function crawlOneStore(opts: {
 
   if (isShopify) {
     platform = "shopify";
+    let shopPresentmentCurrency: string | null = null;
+    try {
+      const acCart = new AbortController();
+      const tCart = setTimeout(() => acCart.abort(), CRAWL_TIMEOUT_MS);
+      shopPresentmentCurrency = await tryFetchShopifyCartCurrency(origin, acCart.signal);
+      clearTimeout(tCart);
+    } catch {
+      shopPresentmentCurrency = null;
+    }
+
     let page = 1;
     while (products.length < maxProducts) {
       emit({
@@ -199,7 +238,7 @@ async function crawlOneStore(opts: {
       if (r.products.length === 0) break;
       for (const sp of r.products) {
         if (products.length >= maxProducts) break;
-        products.push(fromShopifyJson(origin, sp));
+        products.push(fromShopifyJson(origin, sp, shopPresentmentCurrency));
       }
       page += 1;
     }
