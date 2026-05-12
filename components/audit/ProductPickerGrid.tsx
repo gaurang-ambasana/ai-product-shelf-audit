@@ -16,22 +16,34 @@ const CARD_RADIUS = 22;
 
 function formatPrice(p: DiscoveredProduct): string {
   if (p.priceMin == null) return "—";
-  const code = (p.currency && p.currency.length === 3 ? p.currency : "USD").toUpperCase();
-  try {
-    const fmt = new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency: code,
-    });
-    if (p.priceMax != null && Math.abs(p.priceMax - p.priceMin) > 0.0001) {
-      return `${fmt.format(p.priceMin)} – ${fmt.format(p.priceMax)}`;
+  const cur = p.currency?.trim() ?? "";
+  const isIso = /^[A-Za-z]{3}$/.test(cur);
+
+  if (isIso) {
+    try {
+      const fmt = new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency: cur.toUpperCase(),
+      });
+      if (p.priceMax != null && Math.abs(p.priceMax - p.priceMin) > 0.0001) {
+        return `${fmt.format(p.priceMin)} – ${fmt.format(p.priceMax)}`;
+      }
+      return fmt.format(p.priceMin);
+    } catch {
+      /* non-ISO or unsupported code for Intl — fall through */
     }
-    return fmt.format(p.priceMin);
-  } catch {
-    if (p.priceMax != null && p.priceMax !== p.priceMin) {
-      return `${p.priceMin} – ${p.priceMax} ${p.currency ?? ""}`.trim();
-    }
-    return `${p.priceMin} ${p.currency ?? ""}`.trim();
   }
+
+  const numFmt = new Intl.NumberFormat(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+  const low = numFmt.format(p.priceMin);
+  if (p.priceMax != null && Math.abs(p.priceMax - p.priceMin) > 0.0001) {
+    const hi = numFmt.format(p.priceMax);
+    return cur ? `${low} – ${hi} ${cur}` : `${low} – ${hi}`;
+  }
+  return cur ? `${low} ${cur}` : low;
 }
 
 export function ProductPickerGrid(props: {
