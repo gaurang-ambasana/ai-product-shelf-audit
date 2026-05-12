@@ -17,6 +17,8 @@ export const PROGRESS_PHASE_LABELS: Record<string, string> = {
   brand_rank: "Testing typical shopper questions",
   simulation: "Sample shopping questions",
   llm: "Writing clear takeaways",
+  web_prompts: "Drafting shopper web queries",
+  web_research: "Searching the live web",
   done: "Finishing up",
 };
 

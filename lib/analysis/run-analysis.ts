@@ -6,6 +6,7 @@ import { runLiveAiSimulation } from "./live-sim";
 import { generateLlmSections } from "./llm-report";
 import { generateRegionalDiscoveryPrompts } from "./curated-prompts";
 import { fetchMarketBrandSignalsForPrompts } from "./market-brands";
+import { runRealWorldPromptResearch } from "./real-world-prompt-research";
 import {
   averageBreakdown,
   scoreProductRubric,
@@ -393,6 +394,20 @@ export async function runFullAnalysis(opts: {
     }
   } catch {
     report.liveSimulation = null;
+  }
+
+  try {
+    opts.onProgress("web_research", 91, "Running live web research on generated shopper queries…");
+    report.realWorldPromptResearch = await runRealWorldPromptResearch({
+      crawl,
+      selected,
+      category,
+      region: regionTrim,
+      luxury,
+      onProgress: opts.onProgress,
+    });
+  } catch {
+    /* optional — long-running / model access */
   }
 
   opts.onProgress("done", 100, "Your report is ready.");

@@ -50,6 +50,27 @@ export const simulationPromptResultSchema = z.object({
   ),
 });
 
+/** One researched shopper query (web search via Responses API). */
+export const promptWebResearchItemSchema = z.object({
+  prompt: z.string(),
+  intent: z.enum(["brand", "shopping"]),
+  analysis: z.string(),
+  sources: z.array(z.object({ url: z.string(), title: z.string().optional() })),
+});
+
+export type PromptWebResearchItem = z.infer<typeof promptWebResearchItemSchema>;
+
+/** Dynamically generated shopper queries + live web-backed research per query. */
+export const realWorldPromptResearchSchema = z.object({
+  disclaimer: z.string(),
+  brandIntentPrompts: z.array(z.string()),
+  shoppingIntentPrompts: z.array(z.string()),
+  brandIntentResults: z.array(promptWebResearchItemSchema),
+  shoppingIntentResults: z.array(promptWebResearchItemSchema),
+});
+
+export type RealWorldPromptResearch = z.infer<typeof realWorldPromptResearchSchema>;
+
 export const auditReportV1Schema = z.object({
   version: z.literal(1),
   generatedAt: z.string(),
@@ -134,6 +155,8 @@ export const auditReportV1Schema = z.object({
     crawlNotes: z.array(z.string()),
   }),
   measurementAppendix: z.array(z.string()),
+  /** Optional: dynamic shopper queries + web search research (Responses API). */
+  realWorldPromptResearch: realWorldPromptResearchSchema.optional(),
 });
 
 export type AuditReportV1 = z.infer<typeof auditReportV1Schema>;
