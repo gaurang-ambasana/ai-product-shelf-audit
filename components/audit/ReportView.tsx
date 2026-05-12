@@ -69,6 +69,32 @@ function ProductThumb({
   );
 }
 
+function primaryHostnameLabel(storeUrl: string): string {
+  try {
+    return new URL(storeUrl).hostname.replace(/^www\./, "") || storeUrl;
+  } catch {
+    return storeUrl;
+  }
+}
+
+function CentralNarrative({ text }: { text: string }) {
+  return (
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 2.5,
+        mb: 2,
+        borderColor: "divider",
+        bgcolor: (theme) => (theme.palette.mode === "dark" ? "rgba(255,255,255,0.04)" : "grey.50"),
+      }}
+    >
+      <Typography variant="body1" sx={{ whiteSpace: "pre-line", lineHeight: 1.75 }}>
+        {text}
+      </Typography>
+    </Paper>
+  );
+}
+
 function WebResearchPanelHint({ text }: { text?: string | null }) {
   const t = text?.trim();
   if (!t) return null;
@@ -167,6 +193,7 @@ function WebResearchQueriesExplorer({ research }: { research: RealWorldPromptRes
 
 export function ReportView({ report }: { report: AuditReportV1 }) {
   const [tab, setTab] = useState(0);
+  const storeLabel = report.primaryStoreLabel ?? primaryHostnameLabel(report.storeUrl);
   const rankLabels = report.simulation[0]?.rankings.map((r) => r.label) ?? [];
   const simData = report.simulation.map((s) => {
     const row: Record<string, string | number> = {
@@ -245,26 +272,34 @@ export function ReportView({ report }: { report: AuditReportV1 }) {
         <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1.5 }}>
           What this report answers
         </Typography>
-        <Stack component="ul" spacing={1} sx={{ m: 0, pl: 2.5 }}>
-          <Typography component="li" variant="body2" color="text.secondary">
-            <strong>Assistant fit</strong> — Your public listings vs sample shopper questions and per-product scores.
-            Live web research is <strong>summarized per tab</strong> (not dumped in one wall); exact queries stay in the
-            collapsible list below.
-          </Typography>
-          <Typography component="li" variant="body2" color="text.secondary">
-            <strong>Competition</strong> — Other crawled stores, charts, and market-name context—read alongside the live
-            web snapshot in this tab.
-          </Typography>
-          <Typography component="li" variant="body2" color="text.secondary">
-            <strong>Data gaps</strong> — Catalog and listing completeness (structured data, trust signals, clarity)—with
-            web-informed expectations called out in-tab.
-          </Typography>
-          <Typography component="li" variant="body2" color="text.secondary">
-            <strong>Next steps</strong> — Prioritized fixes and rewrites, framed using both offline scores and live web
-            themes.
-          </Typography>
-        </Stack>
-        {report.realWorldWebResearchSynopsis?.overview ? (
+        {report.centralInsights ? (
+          <>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, display: "block" }}>
+              One agentShop narrative across four tabs: (1) whether AI assistants are likely to recommend you, (2)
+              who may win the shopper instead, (3) catalog and listing gaps that hurt AI-readiness, and (4) what to do
+              next for visibility. The same tabs still hold your scores, charts, and raw research for evidence.
+            </Typography>
+            <CentralNarrative text={report.centralInsights.executiveSummary} />
+          </>
+        ) : (
+          <Stack component="ul" spacing={1} sx={{ m: 0, pl: 2.5 }}>
+            <Typography component="li" variant="body2" color="text.secondary">
+              <strong>Assistant fit</strong> — {storeLabel}: how public listings line up with sample shopper questions and
+              per-product scores, plus open-web discovery and crawl-limited picks where available.
+            </Typography>
+            <Typography component="li" variant="body2" color="text.secondary">
+              <strong>Competition</strong> — Other crawled stores, charts, and market-name context for the same
+              questions.
+            </Typography>
+            <Typography component="li" variant="body2" color="text.secondary">
+              <strong>Data gaps</strong> — Catalog and listing completeness (structured data, trust signals, clarity).
+            </Typography>
+            <Typography component="li" variant="body2" color="text.secondary">
+              <strong>Next steps</strong> — Prioritized fixes and rewrites grounded in this audit.
+            </Typography>
+          </Stack>
+        )}
+        {!report.centralInsights && report.realWorldWebResearchSynopsis?.overview ? (
           <Typography variant="body2" color="text.secondary" sx={{ mt: 2, display: "block" }}>
             {report.realWorldWebResearchSynopsis.overview}
           </Typography>
@@ -300,22 +335,32 @@ export function ReportView({ report }: { report: AuditReportV1 }) {
         <Box role="tabpanel" id="report-panel-0" aria-labelledby="report-tab-0" hidden={tab !== 0} sx={{ p: 3 }}>
           {tab === 0 ? (
             <Stack spacing={3}>
-              <WebResearchPanelHint
-                text={
-                  report.realWorldWebResearchSynopsis?.assistantFitPanel ??
-                  (report.realWorldPromptResearch
-                    ? "Live web research ran on ten generated shopper queries; open “Shopper queries we searched” above for the exact wording. When summarization succeeds, a short snapshot appears in each tab."
-                    : null)
-                }
-              />
+              {report.centralInsights ? (
+                <CentralNarrative text={report.centralInsights.aiAssistantRecommendation} />
+              ) : (
+                <WebResearchPanelHint
+                  text={
+                    report.realWorldWebResearchSynopsis?.assistantFitPanel ??
+                    (report.realWorldPromptResearch
+                      ? "Live web research ran on ten generated shopper queries; open “Shopper queries we searched” above for the exact wording. When summarization succeeds, a short snapshot appears in each tab."
+                      : null)
+                  }
+                />
+              )}
+              {report.centralInsights ? (
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: -1, mb: 0.5 }}>
+                  Supporting detail for {storeLabel}: scores, crawl-limited picks, open-web checks, and per-product
+                  cards below.
+                </Typography>
+              ) : null}
               <Box>
                 <Typography variant="h6" sx={{ mb: 1 }}>
                   Likely AI assistant pickup
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2, display: "block" }}>
-                  We match sample shopper questions to your public product wording. Higher scores mean your listings
-                  better align with those questions—useful signal for whether an assistant might surface you—not a
-                  guarantee of live rankings.
+                  {report.centralInsights
+                    ? "How strongly your public product wording aligns with the same regional discovery prompts used elsewhere in this report."
+                    : `We match sample shopper questions to public product wording for ${storeLabel}. Higher scores mean those listings better align with those questions—a useful signal, not a guarantee of live rankings.`}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                   Combined match: <strong>{report.brandAiSearchRank.composite}</strong>
@@ -351,7 +396,7 @@ export function ReportView({ report }: { report: AuditReportV1 }) {
               {report.liveSimulation?.results?.length ? (
                 <Box>
                   <Typography variant="h6" sx={{ mb: 1 }}>
-                    Live-style AI test
+                    Live web picks
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2, display: "block" }}>
                     {report.liveSimulation.note}
@@ -366,11 +411,13 @@ export function ReportView({ report }: { report: AuditReportV1 }) {
                           <Typography variant="body2" color="text.secondary">
                             {r.yourProductShown ? (
                               <>
-                                Your store showed up (best rank{" "}
+                                <strong>{storeLabel}</strong> showed up (best rank{" "}
                                 <strong>{r.yourBestRank ? `#${r.yourBestRank}` : "—"}</strong>).
                               </>
                             ) : (
-                              <>Your store didn’t show up in the top picks for this prompt.</>
+                              <>
+                                <strong>{storeLabel}</strong> did not show up in the top picks for this prompt.
+                              </>
                             )}{" "}
                             {r.winnerStoreLabel ? (
                               <>
@@ -390,6 +437,17 @@ export function ReportView({ report }: { report: AuditReportV1 }) {
                                   <Typography variant="body2" color="text.secondary">
                                     {p.reason}
                                   </Typography>
+                                  {p.url?.trim() ? (
+                                    <Link
+                                      href={p.url.trim()}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      variant="body2"
+                                      sx={{ display: "inline-block", mt: 0.5 }}
+                                    >
+                                      Open page
+                                    </Link>
+                                  ) : null}
                                 </Box>
                               </Stack>
                             ))}
@@ -401,9 +459,99 @@ export function ReportView({ report }: { report: AuditReportV1 }) {
                 </Box>
               ) : null}
 
+              {report.webSearchDiscoveryRank?.results?.length ? (
+                <>
+                  <Divider />
+                  <Box>
+                  <Typography variant="h6" sx={{ mb: 1 }}>
+                    Open web discovery (live search)
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1, display: "block" }}>
+                    {report.webSearchDiscoveryRank.disclaimer}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2, display: "block" }}>
+                    {report.webSearchDiscoveryRank.note}
+                  </Typography>
+                  <Stack spacing={2}>
+                    {report.webSearchDiscoveryRank.results.map((r) => (
+                      <Paper key={r.prompt} variant="outlined" sx={{ p: 2, borderColor: "divider" }}>
+                        <Stack spacing={1}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                            {r.prompt}
+                          </Typography>
+                          <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap", alignItems: "center" }}>
+                            <Chip
+                              size="small"
+                              label={
+                                r.primaryMentioned
+                                  ? `${storeLabel} mentioned (approx #${r.primaryApproxRank ?? "?"})`
+                                  : `${storeLabel} not in notable organic-style results`
+                              }
+                              color={r.primaryMentioned ? "success" : "default"}
+                              variant={r.primaryMentioned ? "filled" : "outlined"}
+                            />
+                          </Stack>
+                          <Typography variant="body2" color="text.secondary">
+                            {r.summary}
+                          </Typography>
+                          {r.surfacedExamples.length ? (
+                            <Box>
+                              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                                What else showed up (examples)
+                              </Typography>
+                              <Stack component="ul" spacing={0.5} sx={{ m: 0, pl: 2, mt: 0.5 }}>
+                                {r.surfacedExamples.map((ex, i) => (
+                                  <Typography key={`${ex.label}-${i}`} component="li" variant="body2">
+                                    <strong>{ex.label}</strong>
+                                    {ex.note ? ` — ${ex.note}` : ""}
+                                    {ex.url?.trim() ? (
+                                      <>
+                                        {" "}
+                                        <Link href={ex.url.trim()} target="_blank" rel="noopener noreferrer">
+                                          Link
+                                        </Link>
+                                      </>
+                                    ) : null}
+                                  </Typography>
+                                ))}
+                              </Stack>
+                            </Box>
+                          ) : null}
+                          <Typography variant="caption" color="text.secondary">
+                            {r.caveats}
+                          </Typography>
+                          {r.sourceUrls.length ? (
+                            <Stack spacing={0.25}>
+                              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                                Search tool sources (URLs)
+                              </Typography>
+                              <Stack spacing={0.25} sx={{ pl: 0 }}>
+                                {r.sourceUrls.slice(0, 8).map((u) => (
+                                  <Link
+                                    key={u}
+                                    href={u}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    variant="caption"
+                                    sx={{ wordBreak: "break-all" }}
+                                  >
+                                    {u}
+                                  </Link>
+                                ))}
+                              </Stack>
+                            </Stack>
+                          ) : null}
+                        </Stack>
+                      </Paper>
+                    ))}
+                  </Stack>
+                </Box>
+                </>
+              ) : null}
+
               <Box>
                 <Typography variant="h6" sx={{ mb: 2 }}>
-                  Your products in this run
+                  {storeLabel} — products in this run
                 </Typography>
                 <Stack spacing={1}>
                   {report.products.map((p) => (
@@ -469,14 +617,23 @@ export function ReportView({ report }: { report: AuditReportV1 }) {
         <Box role="tabpanel" id="report-panel-1" aria-labelledby="report-tab-1" hidden={tab !== 1} sx={{ p: 3 }}>
           {tab === 1 ? (
             <Stack spacing={3}>
-              <WebResearchPanelHint
-                text={
-                  report.realWorldWebResearchSynopsis?.competitionPanel ??
-                  (report.realWorldPromptResearch
-                    ? "This tab compares your crawl to other stores and prompts. Live web research adds what shoppers might see when they search for brands or places to buy—see the query list above."
-                    : null)
-                }
-              />
+              {report.centralInsights ? (
+                <CentralNarrative text={report.centralInsights.competitorWinners} />
+              ) : (
+                <WebResearchPanelHint
+                  text={
+                    report.realWorldWebResearchSynopsis?.competitionPanel ??
+                    (report.realWorldPromptResearch
+                      ? "This tab compares your crawl to other stores and prompts. Live web research adds what shoppers might see when they search for brands or places to buy—see the query list above."
+                      : null)
+                  }
+                />
+              )}
+              {report.centralInsights ? (
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: -1, mb: 0.5 }}>
+                  Supporting detail: named alternatives, charted wording vs prompts, and regional readout below.
+                </Typography>
+              ) : null}
               {report.marketBrandSignals?.length ? (
                 <Box>
                   <Typography variant="h6" sx={{ mb: 1 }}>
@@ -511,7 +668,7 @@ export function ReportView({ report }: { report: AuditReportV1 }) {
 
               <Box>
                 <Typography variant="h6" sx={{ mb: 1 }}>
-                  Your catalog vs each prompt (offline match)
+                  Catalog wording vs discovery prompts
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2, display: "block" }}>
                   {rankLabels.length > 1
@@ -540,14 +697,23 @@ export function ReportView({ report }: { report: AuditReportV1 }) {
         <Box role="tabpanel" id="report-panel-2" aria-labelledby="report-tab-2" hidden={tab !== 2} sx={{ p: 3 }}>
           {tab === 2 ? (
             <Stack spacing={3}>
-              <WebResearchPanelHint
-                text={
-                  report.realWorldWebResearchSynopsis?.dataGapsPanel ??
-                  (report.realWorldPromptResearch
-                    ? "This tab is about listing completeness and trust signals on your own pages. Web research hints at what the broader market often expects to see for similar searches."
-                    : null)
-                }
-              />
+              {report.centralInsights ? (
+                <CentralNarrative text={report.centralInsights.aiReadinessGaps} />
+              ) : (
+                <WebResearchPanelHint
+                  text={
+                    report.realWorldWebResearchSynopsis?.dataGapsPanel ??
+                    (report.realWorldPromptResearch
+                      ? "This tab is about listing completeness and trust signals on your own pages. Web research hints at what the broader market often expects to see for similar searches."
+                      : null)
+                  }
+                />
+              )}
+              {report.centralInsights ? (
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: -1, mb: 0.5 }}>
+                  Supporting detail: checklist gaps, technical notes, and measurement appendix below.
+                </Typography>
+              ) : null}
               <Box>
                 <Typography variant="h6" sx={{ mb: 1 }}>
                   Store-wide content gaps
@@ -603,14 +769,23 @@ export function ReportView({ report }: { report: AuditReportV1 }) {
         <Box role="tabpanel" id="report-panel-3" aria-labelledby="report-tab-3" hidden={tab !== 3} sx={{ p: 3 }}>
           {tab === 3 ? (
             <Stack spacing={3}>
-              <WebResearchPanelHint
-                text={
-                  report.realWorldWebResearchSynopsis?.nextStepsPanel ??
-                  (report.realWorldPromptResearch
-                    ? "These actions come from your listing audit. When web research ran, it informs tone and completeness priorities—not a second crawl."
-                    : null)
-                }
-              />
+              {report.centralInsights ? (
+                <CentralNarrative text={report.centralInsights.agentShopActions} />
+              ) : (
+                <WebResearchPanelHint
+                  text={
+                    report.realWorldWebResearchSynopsis?.nextStepsPanel ??
+                    (report.realWorldPromptResearch
+                      ? "These actions come from your listing audit. When web research ran, it informs tone and completeness priorities—not a second crawl."
+                      : null)
+                  }
+                />
+              )}
+              {report.centralInsights ? (
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: -1, mb: 0.5 }}>
+                  Supporting detail: prioritized checklist and suggested rewrites per product below.
+                </Typography>
+              ) : null}
               <Box>
                 <Typography variant="h6" sx={{ mb: 0.5 }}>
                   agentShop recommendations

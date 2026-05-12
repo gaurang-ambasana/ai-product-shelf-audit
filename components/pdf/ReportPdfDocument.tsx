@@ -21,6 +21,12 @@ const styles = StyleSheet.create({
   row: { marginBottom: 2 },
 });
 
+function clipPdf(s: string, max: number): string {
+  const t = s.replace(/\s+/g, " ").trim();
+  if (t.length <= max) return t;
+  return `${t.slice(0, max)}…`;
+}
+
 export function ReportPdfDocument({ report }: { report: AuditReportV1 }) {
   return (
     <Document>
@@ -30,6 +36,31 @@ export function ReportPdfDocument({ report }: { report: AuditReportV1 }) {
         <Text style={styles.p}>Generated: {report.generatedAt}</Text>
         <Text style={styles.p}>Overall shelf score: {report.overallScore}</Text>
         <Text style={styles.small}>{report.disclaimer}</Text>
+        {report.centralInsights ? (
+          <>
+            <Text style={styles.h2}>agentShop unified insights</Text>
+            <Text style={styles.p}>{clipPdf(report.centralInsights.executiveSummary, 3400)}</Text>
+            <Text style={styles.h2}>AI assistant likelihood (excerpt)</Text>
+            <Text style={styles.small}>{clipPdf(report.centralInsights.aiAssistantRecommendation, 2200)}</Text>
+            <Text style={styles.h2}>Competition (excerpt)</Text>
+            <Text style={styles.small}>{clipPdf(report.centralInsights.competitorWinners, 2200)}</Text>
+            <Text style={styles.h2}>AI-readiness gaps (excerpt)</Text>
+            <Text style={styles.small}>{clipPdf(report.centralInsights.aiReadinessGaps, 2200)}</Text>
+            <Text style={styles.h2}>Recommended actions (excerpt)</Text>
+            <Text style={styles.small}>{clipPdf(report.centralInsights.agentShopActions, 2200)}</Text>
+          </>
+        ) : report.realWorldWebResearchSynopsis ? (
+          <>
+            <Text style={styles.h2}>Live web research (how to read this report)</Text>
+            <Text style={styles.p}>{report.realWorldWebResearchSynopsis.overview}</Text>
+            <Text style={styles.row}>Assistant fit: {report.realWorldWebResearchSynopsis.assistantFitPanel}</Text>
+            <Text style={styles.row}>Competition: {report.realWorldWebResearchSynopsis.competitionPanel}</Text>
+            <Text style={styles.row}>Data gaps: {report.realWorldWebResearchSynopsis.dataGapsPanel}</Text>
+            <Text style={styles.row}>Next steps: {report.realWorldWebResearchSynopsis.nextStepsPanel}</Text>
+          </>
+        ) : report.realWorldPromptResearch ? (
+          <Text style={styles.small}>{report.realWorldPromptResearch.disclaimer}</Text>
+        ) : null}
         <Text style={styles.h2}>Sample shopper questions</Text>
         <Text style={styles.p}>Combined match: {report.brandAiSearchRank.composite}</Text>
         {report.brandAiSearchRank.perQuery.slice(0, 5).map((q) => (
@@ -52,17 +83,20 @@ export function ReportPdfDocument({ report }: { report: AuditReportV1 }) {
             {i + 1}. {r}
           </Text>
         ))}
-        {report.realWorldWebResearchSynopsis ? (
+        {report.webSearchDiscoveryRank?.results?.length ? (
           <>
-            <Text style={styles.h2}>Live web research (how to read this report)</Text>
-            <Text style={styles.p}>{report.realWorldWebResearchSynopsis.overview}</Text>
-            <Text style={styles.row}>Assistant fit: {report.realWorldWebResearchSynopsis.assistantFitPanel}</Text>
-            <Text style={styles.row}>Competition: {report.realWorldWebResearchSynopsis.competitionPanel}</Text>
-            <Text style={styles.row}>Data gaps: {report.realWorldWebResearchSynopsis.dataGapsPanel}</Text>
-            <Text style={styles.row}>Next steps: {report.realWorldWebResearchSynopsis.nextStepsPanel}</Text>
+            <Text style={styles.h2}>Open web discovery (live search)</Text>
+            <Text style={styles.small}>{report.webSearchDiscoveryRank.disclaimer}</Text>
+            {report.webSearchDiscoveryRank.results.slice(0, 5).map((r) => (
+              <Text key={r.prompt} style={styles.p}>
+                • {r.prompt.slice(0, 72)}
+                {r.prompt.length > 72 ? "…" : ""} —{" "}
+                {r.primaryMentioned
+                  ? `mentioned (approx #${r.primaryApproxRank ?? "?"})`
+                  : "not in notable results"}
+              </Text>
+            ))}
           </>
-        ) : report.realWorldPromptResearch ? (
-          <Text style={styles.small}>{report.realWorldPromptResearch.disclaimer}</Text>
         ) : null}
         <Text style={styles.small}>{report.weightsNote}</Text>
       </Page>
