@@ -132,7 +132,7 @@ export async function runLiveAiSimulation(opts: {
   });
 
   const note =
-    "Beta: picks are only from your selected products in this scan. Names of other brands for the same question appear under Competition → “Who shoppers might hear about.”";
+    "Picks are only from your selected products in this scan. Names of other brands for the same question appear under Competition → “Who shoppers might hear about.”";
 
   const results: LiveSimResult[] = [];
   for (const prompt of opts.prompts) {

@@ -7,6 +7,7 @@ import { generateLlmSections } from "./llm-report";
 import { generateRegionalDiscoveryPrompts } from "./curated-prompts";
 import { fetchMarketBrandSignalsForPrompts } from "./market-brands";
 import { runRealWorldPromptResearch } from "./real-world-prompt-research";
+import { summarizeWebResearchForPanels } from "./summarize-web-research-panels";
 import {
   averageBreakdown,
   scoreProductRubric,
@@ -381,10 +382,10 @@ export async function runFullAnalysis(opts: {
     /* optional */
   }
 
-  // Beta: live-style ranking among your crawled products for each discovery prompt.
+  // Live-style ranking among your crawled products for each discovery prompt.
   try {
     if (regionalPrompts.length >= 3) {
-      opts.onProgress("llm", 90, "Running live-style AI pick among your products (beta)…");
+      opts.onProgress("llm", 90, "Running live-style AI pick among your products…");
       const live = await runLiveAiSimulation({
         crawl,
         selected,
@@ -406,6 +407,14 @@ export async function runFullAnalysis(opts: {
       luxury,
       onProgress: opts.onProgress,
     });
+    try {
+      opts.onProgress("web_synopsis", 98, "Summarizing live web findings for each report section…");
+      report.realWorldWebResearchSynopsis = await summarizeWebResearchForPanels(
+        report.realWorldPromptResearch,
+      );
+    } catch {
+      /* optional */
+    }
   } catch {
     /* optional — long-running / model access */
   }

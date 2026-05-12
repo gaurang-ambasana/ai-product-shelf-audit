@@ -52,27 +52,17 @@ export function ReportPdfDocument({ report }: { report: AuditReportV1 }) {
             {i + 1}. {r}
           </Text>
         ))}
-        {report.realWorldPromptResearch ? (
+        {report.realWorldWebResearchSynopsis ? (
           <>
-            <Text style={styles.h2}>Live web research (excerpt)</Text>
-            <Text style={styles.small}>{report.realWorldPromptResearch.disclaimer}</Text>
-            {report.realWorldPromptResearch.brandIntentResults.slice(0, 2).map((row) => (
-              <View key={`b-${row.prompt}`} style={{ marginBottom: 8 }} wrap={false}>
-                <Text style={styles.p}>{row.prompt}</Text>
-                <Text style={styles.row}>
-                  {row.analysis.length > 700 ? `${row.analysis.slice(0, 700)}…` : row.analysis}
-                </Text>
-              </View>
-            ))}
-            {report.realWorldPromptResearch.shoppingIntentResults.slice(0, 2).map((row) => (
-              <View key={`s-${row.prompt}`} style={{ marginBottom: 8 }} wrap={false}>
-                <Text style={styles.p}>{row.prompt}</Text>
-                <Text style={styles.row}>
-                  {row.analysis.length > 700 ? `${row.analysis.slice(0, 700)}…` : row.analysis}
-                </Text>
-              </View>
-            ))}
+            <Text style={styles.h2}>Live web research (how to read this report)</Text>
+            <Text style={styles.p}>{report.realWorldWebResearchSynopsis.overview}</Text>
+            <Text style={styles.row}>Assistant fit: {report.realWorldWebResearchSynopsis.assistantFitPanel}</Text>
+            <Text style={styles.row}>Competition: {report.realWorldWebResearchSynopsis.competitionPanel}</Text>
+            <Text style={styles.row}>Data gaps: {report.realWorldWebResearchSynopsis.dataGapsPanel}</Text>
+            <Text style={styles.row}>Next steps: {report.realWorldWebResearchSynopsis.nextStepsPanel}</Text>
           </>
+        ) : report.realWorldPromptResearch ? (
+          <Text style={styles.small}>{report.realWorldPromptResearch.disclaimer}</Text>
         ) : null}
         <Text style={styles.small}>{report.weightsNote}</Text>
       </Page>

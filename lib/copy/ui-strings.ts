@@ -19,6 +19,7 @@ export const PROGRESS_PHASE_LABELS: Record<string, string> = {
   llm: "Writing clear takeaways",
   web_prompts: "Drafting shopper web queries",
   web_research: "Searching the live web",
+  web_synopsis: "Summarizing web findings for your sections",
   done: "Finishing up",
 };
 

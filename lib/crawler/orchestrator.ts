@@ -282,13 +282,18 @@ async function crawlOneStore(opts: {
   }
 
   const enrichN = Math.min(MAX_HTML_ENRICH, products.length);
+  const catalogTotal = products.length;
   for (let i = 0; i < enrichN; i++) {
     const pct = 40 + (i / Math.max(enrichN, 1)) * 55;
+    const progressLabel =
+      catalogTotal > enrichN
+        ? `${i + 1} of ${enrichN} (${catalogTotal} loaded)`
+        : `${i + 1} of ${catalogTotal}`;
     emit({
       type: "progress",
       phase: "enrich",
       percent: globalPercent(pct),
-      message: `Reading product ${i + 1} of ${enrichN} — ${friendlyName}…`,
+      message: `Reading product ${progressLabel} — ${friendlyName}…`,
     });
     products[i] = await enrichProduct(products[i], platform !== "shopify");
   }
